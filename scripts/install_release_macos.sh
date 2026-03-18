@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO="charliethomson/clipd"
 LABEL="${LABEL:-dev.thmsn.clipd}"
-BINARY_DEST="${BINARY_DEST:-/usr/local/bin/clipd}"
+BINARY_DEST="${BINARY_DEST:-$HOME/.local/bin/clipd}"
 LOG_DIR="${LOG_DIR:-/tmp}"
 
 AGENT_DIR="$HOME/Library/LaunchAgents"
@@ -29,14 +29,15 @@ fi
 
 TMP=$(mktemp)
 curl -fsSL -o "$TMP" "$DOWNLOAD_URL"
-INSTALL_DIR="$(dirname "$BINARY_DEST")"
-if [ ! -w "$INSTALL_DIR" ]; then
-    sudo install -m 755 "$TMP" "$BINARY_DEST"
-else
-    install -m 755 "$TMP" "$BINARY_DEST"
-fi
+mkdir -p "$(dirname "$BINARY_DEST")"
+install -m 755 "$TMP" "$BINARY_DEST"
 rm "$TMP"
 echo "Installed binary to $BINARY_DEST"
+
+case ":$PATH:" in
+    *":$(dirname "$BINARY_DEST"):"*) ;;
+    *) echo "Note: $(dirname "$BINARY_DEST") is not in your PATH. Add the following to your shell profile:"; echo "  export PATH=\"$(dirname "$BINARY_DEST"):\$PATH\"" ;;
+esac
 
 # --- install plist ---
 mkdir -p "$AGENT_DIR"

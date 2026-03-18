@@ -36,12 +36,12 @@ curl -fsSL https://raw.githubusercontent.com/charliethomson/clipd/main/scripts/i
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/charliethomson/clipd/main/scripts/install_release_macos.sh \
-  | BINARY_DEST=~/.local/bin/clipd LOG_DIR=~/.local/share/clipd bash
+  | BINARY_DEST=/usr/local/bin/clipd LOG_DIR=~/.local/share/clipd bash
 ```
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BINARY_DEST` | `/usr/local/bin/clipd` | Where to install the binary |
+| `BINARY_DEST` | `~/.local/bin/clipd` | Where to install the binary |
 | `LABEL` | `dev.thmsn.clipd` | launchd agent label |
 | `LOG_DIR` | `/tmp` | Directory for stdout/stderr logs |
 
