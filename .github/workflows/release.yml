@@ -9,6 +9,11 @@ on:
 permissions:
   contents: write
 
+# clippers v0.1.2 declares cmake_minimum_required < 3.5; CMake 4.0 removed
+# that compatibility. Setting this env var re-enables it for all build steps.
+env:
+  CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+
 jobs:
   build:
     name: Build (${{ matrix.target }})
