@@ -10,7 +10,20 @@ use crate::strategies::{domain::strategy_domain, regex::strategy_regex};
     rename_all_fields = "snake_case"
 )]
 pub enum PatternConfig {
-    // https:\/\/x.com\/(.+) => https://stupidpenisx.com/$1
+    /// Transforms clipboard text using a regular expression.
+    ///
+    /// `pattern` is a Rust regex matched against the full clipboard string.
+    /// `replacement` is the output — use `$1`, `$2`, … to insert capture groups.
+    /// Only the first match is replaced. If nothing matches, this rule is skipped.
+    ///
+    /// Example (YouTube URL normalisation): <https://regexr.com/8labk>
+    ///
+    /// ```toml
+    /// [[patterns]]
+    /// style = "match"
+    /// pattern = "^(.+)v=([a-zA-Z0-9-_]{11})(.+)$"
+    /// replacement = "https://youtube.com/watch?v=$2"
+    /// ```
     Match {
         pattern: String,
         replacement: String,
