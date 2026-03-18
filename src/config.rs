@@ -77,7 +77,9 @@ impl Config {
         for pattern in self.patterns.iter() {
             match pattern.apply(haystack) {
                 Ok(Some(replacement)) if replacement != haystack => return Some(replacement),
-                Err(e) => todo!("How do I want to handle errors? ({e})"),
+                Err(e) => {
+                    tracing::error!(error = %e, "Pattern failed, skipping");
+                }
                 _ => {}
             }
         }

@@ -1,10 +1,14 @@
-use std::{path::Path, str::FromStr, time::Duration};
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
+use std::{path::Path, path::PathBuf, str::FromStr, time::Duration};
 
 use clap::{Parser, Subcommand};
 use clippers::{Clipboard, ClipperData};
 use libconfig::ConfigExt;
 use libproduct::product_name;
 use tracing::Level;
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 
 use crate::config::Config;
 
@@ -45,6 +49,74 @@ enum Command {
     Config,
 }
 
+/// Returns the platform-appropriate directory for log files.
+///
+/// - macOS:   `~/Library/Logs/clipd/`
+/// - Linux:   `$XDG_STATE_HOME/clipd/logs/`  (default: `~/.local/state/clipd/logs/`)
+/// - Windows: `%LOCALAPPDATA%\clipd\logs\`
+fn log_dir() -> PathBuf {
+    #[cfg(target_os = "macos")]
+    {
+        let home = std::env::var("HOME").unwrap_or_default();
+        PathBuf::from(home).join("Library/Logs/clipd")
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let state = std::env::var("XDG_STATE_HOME").unwrap_or_else(|_| {
+            let home = std::env::var("HOME").unwrap_or_default();
+            format!("{home}/.local/state")
+        });
+        PathBuf::from(state).join("clipd/logs")
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let local = std::env::var("LOCALAPPDATA").unwrap_or_default();
+        PathBuf::from(local).join("clipd\\logs")
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        PathBuf::from("/tmp/clipd/logs")
+    }
+}
+
+/// Initialises the tracing subscriber.
+///
+/// In daemon mode, logs are written to rolling daily files in [`log_dir()`] with
+/// no ANSI colour codes. In interactive mode, logs go to stdout.
+///
+/// Returns the `WorkerGuard` that must be kept alive for the duration of the
+/// program; dropping it flushes and closes the background writer thread.
+fn init_tracing(daemon: bool, log_level: Level) -> Option<WorkerGuard> {
+    if daemon {
+        let dir = log_dir();
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            eprintln!("Warning: could not create log directory {}: {e}", dir.display());
+        }
+        let file_appender = tracing_appender::rolling::daily(&dir, "clipd.log");
+        let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_writer(non_blocking)
+                    .with_ansi(false)
+                    .with_filter(tracing_subscriber::filter::LevelFilter::from_level(log_level)),
+            )
+            .init();
+
+        Some(guard)
+    } else {
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_filter(tracing_subscriber::filter::LevelFilter::from_level(log_level)),
+            )
+            .init();
+
+        None
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     #[allow(clippy::borrow_interior_mutable_const)]
@@ -52,16 +124,12 @@ async fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let default_log_level = if args.verbose {
-        Level::DEBUG
-    } else {
-        Level::ERROR
-    };
+    let log_level = Level::from_str(&std::env::var("RUST_LOG").unwrap_or_default()).unwrap_or(
+        if args.verbose { Level::DEBUG } else { Level::INFO },
+    );
 
-    let log_level = Level::from_str(&std::env::var("RUST_LOG").unwrap_or_default())
-        .unwrap_or(default_log_level);
-
-    tracing_subscriber::fmt().with_max_level(log_level).init();
+    // Keep the guard alive for the lifetime of main so the file writer isn't dropped early.
+    let _tracing_guard = init_tracing(args.daemon, log_level);
 
     if let Some(Command::Config) = args.command {
         Config::load().ok();
@@ -74,6 +142,8 @@ async fn main() -> anyhow::Result<()> {
     let mut loaded =
         Config::load_tracked().map_err(|e| anyhow::anyhow!("Failed to load config: {e}"))?;
 
+    tracing::info!("clipd started");
+
     loop {
         // Reload if the config file was modified externally (e.g. via `clipd config`).
         let current_mtime = std::fs::metadata(&config_path)
@@ -82,11 +152,11 @@ async fn main() -> anyhow::Result<()> {
         if current_mtime != loaded.mtime() {
             match Config::load_tracked() {
                 Ok(fresh) => {
-                    tracing::debug!("Config reloaded");
+                    tracing::info!("Config reloaded");
                     loaded = fresh;
                 }
                 Err(e) => {
-                    tracing::warn!(error=%e, "Failed to reload config, keeping previous");
+                    tracing::warn!(error = %e, "Failed to reload config, keeping previous");
                 }
             }
         }
@@ -98,10 +168,8 @@ async fn main() -> anyhow::Result<()> {
             return Ok(());
         }
 
-        if let Err(e) = result
-            && args.verbose
-        {
-            eprintln!("Failed to tick: {e}")
+        if let Err(e) = result {
+            tracing::error!(error = %e, "Tick failed");
         }
 
         tokio::time::sleep(Duration::from_millis(loaded.tick_interval_ms)).await;
@@ -142,13 +210,17 @@ async fn tick(config: &Config) -> anyhow::Result<()> {
         _ => return Ok(()),
     };
 
+    // Only log content when it matched a pattern; unmatched clipboard text is never logged.
     let Some(updated_content) = config.apply(&content) else {
+        tracing::debug!("No patterns matched");
         return Ok(());
     };
 
     clipboard
         .write_text(&updated_content)
         .map_err(|e| anyhow::anyhow!("Failed to write clipboard content: {e}"))?;
+
+    tracing::info!(input = %content, output = %updated_content, "Transformed clipboard");
 
     Ok(())
 }
