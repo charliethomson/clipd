@@ -1,12 +1,12 @@
 [package]
 name = "clipd"
-version = "0.2.5"
+version = "0.3.0"
 edition = "2024"
 description = "A clipboard daemon that watches and transforms clipboard contents using configurable rules."
 
 [dependencies]
 anyhow = "1.0.102"
-clipboard = "0.5.0"
+clippers = "0.1.2"
 regex = "1.12.3"
 serde = { version = "1.0.228", features = ["derive"] }
 libpath = { git = "https://github.com/charliethomson/libpath" }
@@ -18,5 +18,3 @@ url = "2.5.8"
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
 
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2-app-kit = { version = "0.3.2", features = ["NSPasteboardItem"] }

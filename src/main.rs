@@ -1,7 +1,7 @@
 use std::{path::Path, str::FromStr, time::Duration};
 
 use clap::{Parser, Subcommand};
-use clipboard::{ClipboardContext, ClipboardProvider};
+use clippers::{Clipboard, ClipperData};
 use libconfig::ConfigExt;
 use libproduct::product_name;
 use tracing::Level;
@@ -71,13 +71,8 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let config_path = libpath::config_path("clipd");
-    let mut loaded = Config::load_tracked()
-        .map_err(|e| anyhow::anyhow!("Failed to load config: {e}"))?;
-
-    let mut ctx: ClipboardContext = match ClipboardProvider::new() {
-        Ok(ctx) => ctx,
-        Err(e) => anyhow::bail!("Failed to acquire clipboard handle: {e}"),
-    };
+    let mut loaded =
+        Config::load_tracked().map_err(|e| anyhow::anyhow!("Failed to load config: {e}"))?;
 
     loop {
         // Reload if the config file was modified externally (e.g. via `clipd config`).
@@ -96,7 +91,7 @@ async fn main() -> anyhow::Result<()> {
             }
         }
 
-        let result = tick(&mut ctx, &loaded).await;
+        let result = tick(&loaded).await;
 
         if !args.daemon {
             result?;
@@ -124,7 +119,9 @@ fn open_in_editor(path: &Path) -> anyhow::Result<()> {
     }
 
     #[cfg(target_os = "macos")]
-    std::process::Command::new("open").args(["-t", path.to_str().unwrap()]).status()?;
+    std::process::Command::new("open")
+        .args(["-t", path.to_str().unwrap()])
+        .status()?;
 
     #[cfg(target_os = "linux")]
     std::process::Command::new("xdg-open").arg(path).status()?;
@@ -137,18 +134,21 @@ fn open_in_editor(path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn tick(ctx: &mut ClipboardContext, config: &Config) -> anyhow::Result<()> {
-    let content = ctx
-        .get_contents()
-        .map_err(|e| anyhow::anyhow!("Failed to read clipboard content: {e}"))?;
+async fn tick(config: &Config) -> anyhow::Result<()> {
+    let mut clipboard = Clipboard::get();
+
+    let content = match clipboard.read() {
+        Some(ClipperData::Text(t)) => t.to_string(),
+        _ => return Ok(()),
+    };
 
     let Some(updated_content) = config.apply(&content) else {
         return Ok(());
     };
 
-    ctx.set_contents(updated_content.clone())
+    clipboard
+        .write_text(&updated_content)
         .map_err(|e| anyhow::anyhow!("Failed to write clipboard content: {e}"))?;
 
-    println!("{content} => {updated_content}");
     Ok(())
 }
