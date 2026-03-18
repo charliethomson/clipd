@@ -20,7 +20,56 @@ Out of the box clipd ships with two rules:
 - Redirect `x.com` links to `stupidpenisx.com`
 - Normalise YouTube URLs to `https://youtube.com/watch?v=<id>` (strips tracking params)
 
-## Installation
+## Install from release
+
+Downloads the latest pre-built binary from GitHub Releases — no Rust toolchain required.
+
+### macOS
+
+Detects architecture (Apple Silicon or Intel) automatically.
+
+```sh
+./scripts/install_release_macos.sh
+```
+
+**Options** (set as environment variables):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BINARY_DEST` | `/usr/local/bin/clipd` | Where to install the binary |
+| `LABEL` | `dev.thmsn.clipd` | launchd agent label |
+| `LOG_DIR` | `/tmp` | Directory for stdout/stderr logs |
+
+### Linux (systemd)
+
+```sh
+./scripts/install_release_linux.sh
+```
+
+**Options**:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BINARY_DEST` | `/usr/local/bin/clipd` | Where to install the binary |
+| `SERVICE_NAME` | `clipd` | systemd unit name |
+
+### Windows
+
+Requires an Administrator prompt. Run one of:
+
+```bat
+scripts\InstallRelease.bat
+```
+
+```powershell
+.\scripts\InstallRelease.ps1 -BinaryDest "C:\Program Files\clipd\clipd.exe" -TaskName clipd
+```
+
+> **Note:** The Windows and Linux clipboard backends are not yet implemented. These scripts are provided for future support.
+
+## Build and install from source
+
+Requires a Rust toolchain (`cargo`).
 
 ### macOS
 
@@ -70,8 +119,6 @@ scripts\Install.bat
 ```
 
 Registers a Task Scheduler task that runs clipd at logon.
-
-> **Note:** The Windows and Linux clipboard backends are not yet implemented. The install scripts are provided for future support.
 
 ## Configuration
 
@@ -134,7 +181,7 @@ cargo test
 
 ## Releases
 
-A release is created automatically on every push to `main`. Each release is tagged `v{version}-{short-sha}` and includes pre-built binaries for:
+A release is created automatically on every push to `main`. Each release is tagged `v{version}` (bumped by commit message prefix) and includes pre-built binaries for:
 
 - `aarch64-apple-darwin` (macOS ARM)
 - `x86_64-apple-darwin` (macOS Intel)
