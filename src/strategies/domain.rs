@@ -97,4 +97,22 @@ mod tests {
         let result = strategy_domain("x.com", "example.com", "http://x.com/page").unwrap();
         assert_eq!(result, Some("http://example.com/page".to_string()));
     }
+
+    // --- host == None branch (warn path) ---
+
+    #[test]
+    fn returns_none_when_url_has_no_host() {
+        // file:///path parses successfully but host_str() is None
+        let result = strategy_domain("x.com", "example.com", "file:///local/path").unwrap();
+        assert_eq!(result, None);
+    }
+
+    // --- set_host error path ---
+
+    #[test]
+    fn returns_error_when_target_host_is_invalid() {
+        // An empty host on a non-file URL causes set_host to return Err
+        let result = strategy_domain("x.com", "", "https://x.com/page");
+        assert!(result.is_err());
+    }
 }
