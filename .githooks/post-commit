@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [ -f .git/NEED_VERSION_AMEND ]; then
+    rm -f .git/NEED_VERSION_AMEND
+
+    git add Cargo.toml
+    git commit --amend --no-edit
+fi
