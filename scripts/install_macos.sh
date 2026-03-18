@@ -20,7 +20,7 @@ fi
 # --- stop existing agent before replacing binary ---
 if launchctl list | grep -q "$LABEL" 2>/dev/null; then
     echo "Stopping existing agent..."
-    launchctl unload "$PLIST"
+    launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 fi
 
 # --- build ---
@@ -41,5 +41,5 @@ sed \
     "$TEMPLATE" > "$PLIST"
 
 # --- start agent ---
-launchctl load "$PLIST"
+launchctl bootstrap "gui/$(id -u)" "$PLIST"
 echo "Done. Logs: $LOG_DIR/clipd.log / $LOG_DIR/clipd.err"
