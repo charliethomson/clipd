@@ -27,7 +27,12 @@ fi
 
 TMP=$(mktemp)
 curl -fsSL -o "$TMP" "$DOWNLOAD_URL"
-install -m 755 "$TMP" "$BINARY_DEST"
+INSTALL_DIR="$(dirname "$BINARY_DEST")"
+if [ ! -w "$INSTALL_DIR" ]; then
+    sudo install -m 755 "$TMP" "$BINARY_DEST"
+else
+    install -m 755 "$TMP" "$BINARY_DEST"
+fi
 rm "$TMP"
 echo "Installed binary to $BINARY_DEST"
 
