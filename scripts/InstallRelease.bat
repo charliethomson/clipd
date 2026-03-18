@@ -30,7 +30,7 @@ echo Installed binary to %BINARY_DEST%
 set "TASK_XML=%TEMP%\clipd-task.xml"
 
 powershell -NoProfile -Command ^
-    "$xml = (Invoke-RestMethod '%RAW%/configs/windows/clipd-task.xml')" ^
+    "$xml = (Invoke-WebRequest '%RAW%/configs/windows/clipd-task.xml').Content" ^
     " -replace '{{BINARY_PATH}}', '%BINARY_DEST%'" ^
     " -replace '{{USER}}', $env:USERDOMAIN\$env:USERNAME" ^
     " -replace '{{TASK_NAME}}', '%TASK_NAME%';" ^

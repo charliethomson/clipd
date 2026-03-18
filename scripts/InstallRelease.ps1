@@ -26,7 +26,7 @@ Write-Host "Installed binary to $BinaryDest"
 
 # --- download and substitute task template ---
 $User    = "$env:USERDOMAIN\$env:USERNAME"
-$TaskXml = (Invoke-RestMethod "$Raw/configs/windows/clipd-task.xml") `
+$TaskXml = (Invoke-WebRequest "$Raw/configs/windows/clipd-task.xml").Content `
     -replace [regex]::Escape("{{BINARY_PATH}}"), $BinaryDest `
     -replace [regex]::Escape("{{USER}}"),        $User `
     -replace [regex]::Escape("{{TASK_NAME}}"),   $TaskName
