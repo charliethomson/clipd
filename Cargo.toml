@@ -1,7 +1,8 @@
 [package]
 name = "clipd"
-version = "0.1.3"
+version = "0.2.0"
 edition = "2024"
+description = "A clipboard daemon that watches and transforms clipboard contents using configurable rules."
 
 [dependencies]
 anyhow = "1.0.102"
