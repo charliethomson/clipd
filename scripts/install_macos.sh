@@ -11,13 +11,25 @@ TEMPLATE="$REPO_ROOT/configs/launchd/dev.thmsn.clipd.plist"
 AGENT_DIR="$HOME/Library/LaunchAgents"
 PLIST="$AGENT_DIR/$LABEL.plist"
 
+if [ -f "$BINARY_DEST" ]; then
+    echo "Updating clipd..."
+else
+    echo "Installing clipd..."
+fi
+
+# --- stop existing agent before replacing binary ---
+if launchctl list | grep -q "$LABEL" 2>/dev/null; then
+    echo "Stopping existing agent..."
+    launchctl unload "$PLIST"
+fi
+
 # --- build ---
 echo "Building release binary..."
 cargo build --release --manifest-path "$REPO_ROOT/Cargo.toml"
 
 # --- install binary ---
-echo "Installing binary to $BINARY_DEST..."
 install -m 755 "$REPO_ROOT/target/release/clipd" "$BINARY_DEST"
+echo "Installed binary to $BINARY_DEST"
 
 # --- install plist ---
 mkdir -p "$AGENT_DIR"
@@ -27,12 +39,7 @@ sed \
     -e "s|{{LOG_PATH}}|$LOG_DIR/clipd.log|g" \
     -e "s|{{ERR_PATH}}|$LOG_DIR/clipd.err|g" \
     "$TEMPLATE" > "$PLIST"
-echo "Installed plist to $PLIST"
 
-# --- load agent ---
-if launchctl list | grep -q "$LABEL" 2>/dev/null; then
-    echo "Unloading existing agent..."
-    launchctl unload "$PLIST"
-fi
+# --- start agent ---
 launchctl load "$PLIST"
-echo "Agent loaded. Logs: $LOG_DIR/clipd.log / $LOG_DIR/clipd.err"
+echo "Done. Logs: $LOG_DIR/clipd.log / $LOG_DIR/clipd.err"

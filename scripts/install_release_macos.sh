@@ -16,6 +16,18 @@ case "$(uname -m)" in
     *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
 esac
 
+if [ -f "$BINARY_DEST" ]; then
+    echo "Updating clipd..."
+else
+    echo "Installing clipd..."
+fi
+
+# --- stop existing agent before replacing binary ---
+if launchctl list | grep -q "$LABEL" 2>/dev/null; then
+    echo "Stopping existing agent..."
+    launchctl unload "$PLIST"
+fi
+
 # --- download latest release binary ---
 echo "Fetching latest release ($ASSET)..."
 DOWNLOAD_URL=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
@@ -48,12 +60,7 @@ curl -fsSL "$RAW/configs/launchd/dev.thmsn.clipd.plist" \
         -e "s|{{LOG_PATH}}|$LOG_DIR/clipd.log|g" \
         -e "s|{{ERR_PATH}}|$LOG_DIR/clipd.err|g" \
     > "$PLIST"
-echo "Installed plist to $PLIST"
 
-# --- load agent ---
-if launchctl list | grep -q "$LABEL" 2>/dev/null; then
-    echo "Unloading existing agent..."
-    launchctl unload "$PLIST"
-fi
+# --- start agent ---
 launchctl load "$PLIST"
-echo "Agent loaded. Logs: $LOG_DIR/clipd.log / $LOG_DIR/clipd.err"
+echo "Done. Logs: $LOG_DIR/clipd.log / $LOG_DIR/clipd.err"

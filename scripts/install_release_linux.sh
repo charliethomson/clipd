@@ -14,6 +14,18 @@ case "$(uname -m)" in
     *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
 esac
 
+if [ -f "$BINARY_DEST" ]; then
+    echo "Updating clipd..."
+else
+    echo "Installing clipd..."
+fi
+
+# --- stop existing service before replacing binary ---
+if systemctl --user is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+    echo "Stopping existing service..."
+    systemctl --user stop "$SERVICE_NAME"
+fi
+
 # --- download latest release binary ---
 echo "Fetching latest release ($ASSET)..."
 DOWNLOAD_URL=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
@@ -44,11 +56,10 @@ curl -fsSL "$RAW/configs/systemd/clipd.service" \
         -e "s|{{BINARY_PATH}}|$BINARY_DEST|g" \
         -e "s|{{SERVICE_NAME}}|$SERVICE_NAME|g" \
     > "$SERVICE_FILE"
-echo "Installed service to $SERVICE_FILE"
 
 # --- enable and start ---
 systemctl --user daemon-reload
 systemctl --user enable --now "$SERVICE_NAME"
-echo "Service enabled and started."
+echo "Done."
 echo "  Status:  systemctl --user status $SERVICE_NAME"
 echo "  Logs:    journalctl --user -u $SERVICE_NAME -f"
