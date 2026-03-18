@@ -64,14 +64,15 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(log_level).init();
 
     if let Some(Command::Config) = args.command {
-        // Ensure the config file exists before opening it.
         Config::load().ok();
         let path = libpath::config_path("clipd");
         open_in_editor(&path)?;
         return Ok(());
     }
 
-    let config = Config::default();
+    let config_path = libpath::config_path("clipd");
+    let mut loaded = Config::load_tracked()
+        .map_err(|e| anyhow::anyhow!("Failed to load config: {e}"))?;
 
     let mut ctx: ClipboardContext = match ClipboardProvider::new() {
         Ok(ctx) => ctx,
@@ -79,7 +80,23 @@ async fn main() -> anyhow::Result<()> {
     };
 
     loop {
-        let result = tick(&mut ctx).await;
+        // Reload if the config file was modified externally (e.g. via `clipd config`).
+        let current_mtime = std::fs::metadata(&config_path)
+            .ok()
+            .and_then(|m| m.modified().ok());
+        if current_mtime != loaded.mtime() {
+            match Config::load_tracked() {
+                Ok(fresh) => {
+                    tracing::debug!("Config reloaded");
+                    loaded = fresh;
+                }
+                Err(e) => {
+                    tracing::warn!(error=%e, "Failed to reload config, keeping previous");
+                }
+            }
+        }
+
+        let result = tick(&mut ctx, &loaded).await;
 
         if !args.daemon {
             result?;
@@ -92,7 +109,7 @@ async fn main() -> anyhow::Result<()> {
             eprintln!("Failed to tick: {e}")
         }
 
-        tokio::time::sleep(Duration::from_millis(config.tick_interval_ms)).await;
+        tokio::time::sleep(Duration::from_millis(loaded.tick_interval_ms)).await;
     }
 }
 
@@ -120,8 +137,7 @@ fn open_in_editor(path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn tick(ctx: &mut ClipboardContext) -> anyhow::Result<()> {
-    let config = Config::load().map_err(|e| anyhow::anyhow!("Failed to load config: {e}"))?;
+async fn tick(ctx: &mut ClipboardContext, config: &Config) -> anyhow::Result<()> {
     let content = ctx
         .get_contents()
         .map_err(|e| anyhow::anyhow!("Failed to read clipboard content: {e}"))?;
