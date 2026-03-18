@@ -6,11 +6,9 @@ LABEL="${LABEL:-dev.thmsn.clipd}"
 BINARY_DEST="${BINARY_DEST:-/usr/local/bin/clipd}"
 LOG_DIR="${LOG_DIR:-/tmp}"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEMPLATE="$REPO_ROOT/configs/launchd/dev.thmsn.clipd.plist"
 AGENT_DIR="$HOME/Library/LaunchAgents"
 PLIST="$AGENT_DIR/$LABEL.plist"
+RAW="https://raw.githubusercontent.com/$REPO/main"
 
 case "$(uname -m)" in
     arm64)  ASSET="clipd-aarch64-apple-darwin" ;;
@@ -18,7 +16,7 @@ case "$(uname -m)" in
     *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
 esac
 
-# --- download latest release ---
+# --- download latest release binary ---
 echo "Fetching latest release ($ASSET)..."
 DOWNLOAD_URL=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
     | grep -o '"browser_download_url": *"[^"]*'"$ASSET"'"' \
@@ -37,12 +35,13 @@ echo "Installed binary to $BINARY_DEST"
 
 # --- install plist ---
 mkdir -p "$AGENT_DIR"
-sed \
-    -e "s|{{LABEL}}|$LABEL|g" \
-    -e "s|{{BINARY_PATH}}|$BINARY_DEST|g" \
-    -e "s|{{LOG_PATH}}|$LOG_DIR/clipd.log|g" \
-    -e "s|{{ERR_PATH}}|$LOG_DIR/clipd.err|g" \
-    "$TEMPLATE" > "$PLIST"
+curl -fsSL "$RAW/configs/launchd/dev.thmsn.clipd.plist" \
+    | sed \
+        -e "s|{{LABEL}}|$LABEL|g" \
+        -e "s|{{BINARY_PATH}}|$BINARY_DEST|g" \
+        -e "s|{{LOG_PATH}}|$LOG_DIR/clipd.log|g" \
+        -e "s|{{ERR_PATH}}|$LOG_DIR/clipd.err|g" \
+    > "$PLIST"
 echo "Installed plist to $PLIST"
 
 # --- load agent ---

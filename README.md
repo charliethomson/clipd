@@ -26,13 +26,18 @@ Downloads the latest pre-built binary from GitHub Releases — no Rust toolchain
 
 ### macOS
 
-Detects architecture (Apple Silicon or Intel) automatically.
+Detects architecture (Apple Silicon or Intel) automatically. ([view script](https://github.com/charliethomson/clipd/blob/main/scripts/install_release_macos.sh))
 
 ```sh
-./scripts/install_release_macos.sh
+curl -fsSL https://raw.githubusercontent.com/charliethomson/clipd/main/scripts/install_release_macos.sh | bash
 ```
 
-**Options** (set as environment variables):
+**Options** (pass as environment variables):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/charliethomson/clipd/main/scripts/install_release_macos.sh \
+  | BINARY_DEST=~/.local/bin/clipd LOG_DIR=~/.local/share/clipd bash
+```
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -42,11 +47,11 @@ Detects architecture (Apple Silicon or Intel) automatically.
 
 ### Linux (systemd)
 
-```sh
-./scripts/install_release_linux.sh
-```
+([view script](https://github.com/charliethomson/clipd/blob/main/scripts/install_release_linux.sh))
 
-**Options**:
+```sh
+curl -fsSL https://raw.githubusercontent.com/charliethomson/clipd/main/scripts/install_release_linux.sh | bash
+```
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -55,14 +60,10 @@ Detects architecture (Apple Silicon or Intel) automatically.
 
 ### Windows
 
-Requires an Administrator prompt. Run one of:
-
-```bat
-scripts\InstallRelease.bat
-```
+Requires an Administrator prompt. ([view script](https://github.com/charliethomson/clipd/blob/main/scripts/InstallRelease.ps1))
 
 ```powershell
-.\scripts\InstallRelease.ps1 -BinaryDest "C:\Program Files\clipd\clipd.exe" -TaskName clipd
+irm https://raw.githubusercontent.com/charliethomson/clipd/main/scripts/InstallRelease.ps1 | iex
 ```
 
 > **Note:** The Windows and Linux clipboard backends are not yet implemented. These scripts are provided for future support.

@@ -8,30 +8,25 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Repo      = "charliethomson/clipd"
-$Asset     = "clipd-x86_64-pc-windows-msvc.exe"
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot  = Split-Path -Parent $ScriptDir
-$Template  = Join-Path $RepoRoot "configs\windows\clipd-task.xml"
+$Repo  = "charliethomson/clipd"
+$Asset = "clipd-x86_64-pc-windows-msvc.exe"
+$Raw   = "https://raw.githubusercontent.com/$Repo/main"
 
-# --- download latest release ---
+# --- download latest release binary ---
 Write-Host "Fetching latest release ($Asset)..."
 $Release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
 $Url = $Release.assets | Where-Object { $_.name -eq $Asset } | Select-Object -ExpandProperty browser_download_url
 
-if (-not $Url) {
-    Write-Error "Could not find release asset $Asset"
-    exit 1
-}
+if (-not $Url) { Write-Error "Could not find release asset $Asset"; exit 1 }
 
 $BinaryDir = Split-Path -Parent $BinaryDest
 if (-not (Test-Path $BinaryDir)) { New-Item -ItemType Directory -Path $BinaryDir | Out-Null }
 Invoke-WebRequest -Uri $Url -OutFile $BinaryDest
 Write-Host "Installed binary to $BinaryDest"
 
-# --- substitute template ---
+# --- download and substitute task template ---
 $User    = "$env:USERDOMAIN\$env:USERNAME"
-$TaskXml = (Get-Content $Template -Raw) `
+$TaskXml = (Invoke-RestMethod "$Raw/configs/windows/clipd-task.xml") `
     -replace [regex]::Escape("{{BINARY_PATH}}"), $BinaryDest `
     -replace [regex]::Escape("{{USER}}"),        $User `
     -replace [regex]::Escape("{{TASK_NAME}}"),   $TaskName
