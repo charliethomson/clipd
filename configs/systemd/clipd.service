@@ -1,0 +1,14 @@
+[Unit]
+Description=clipd - clipboard daemon
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart={{BINARY_PATH}} --daemon
+Restart=on-failure
+RestartSec=5s
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=graphical-session.target
