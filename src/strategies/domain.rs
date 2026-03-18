@@ -32,3 +32,69 @@ pub fn strategy_domain(
 
     Ok(Some(url.to_string()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- successful replacement ---
+
+    #[test]
+    fn replaces_matching_domain() {
+        let result = strategy_domain("x.com", "example.com", "https://x.com/foo/bar").unwrap();
+        assert_eq!(result, Some("https://example.com/foo/bar".to_string()));
+    }
+
+    #[test]
+    fn preserves_path_query_and_fragment() {
+        let input = "https://x.com/path?q=1&r=2#section";
+        let result = strategy_domain("x.com", "example.com", input).unwrap();
+        assert_eq!(result, Some("https://example.com/path?q=1&r=2#section".to_string()));
+    }
+
+    // --- real-world: x.com → stupidpenisx.com (from default config) ---
+
+    #[test]
+    fn redirects_x_com_to_target() {
+        let result =
+            strategy_domain("x.com", "stupidpenisx.com", "https://x.com/user/status/123")
+                .unwrap();
+        assert_eq!(result, Some("https://stupidpenisx.com/user/status/123".to_string()));
+    }
+
+    // --- non-matching domain ---
+
+    #[test]
+    fn returns_none_for_different_domain() {
+        let result = strategy_domain("x.com", "example.com", "https://twitter.com/foo").unwrap();
+        assert_eq!(result, None);
+    }
+
+    // --- invalid / non-URL input ---
+
+    #[test]
+    fn returns_none_for_plain_text() {
+        let result = strategy_domain("x.com", "example.com", "just some plain text").unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn returns_none_for_empty_string() {
+        let result = strategy_domain("x.com", "example.com", "").unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn returns_none_for_relative_path() {
+        let result = strategy_domain("x.com", "example.com", "/relative/path").unwrap();
+        assert_eq!(result, None);
+    }
+
+    // --- scheme variations ---
+
+    #[test]
+    fn works_with_http_scheme() {
+        let result = strategy_domain("x.com", "example.com", "http://x.com/page").unwrap();
+        assert_eq!(result, Some("http://example.com/page".to_string()));
+    }
+}
